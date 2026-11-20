@@ -30,7 +30,7 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
 - **AI decision to review:** compose uses `${VAR:-default}` defaults so the reviewer does **not** have to copy `.env` first — keeps setup to one command. `.env` is only for overrides.
 - **Limitation noted:** the `api` service can't start until Phase 2 creates `backend/`, so Phase 0 verification runs Mailpit only.
 - **Setup issue (10:20am):** `docker` not recognised in my terminal — Docker Desktop wasn't installed. Committed Phase 0 anyway (files don't depend on it); installing Docker in parallel with Phase 1 and running the Mailpit check after.
-- **My call:** _(fill in)_
+- **My call:** Accepted. Agree with compose defaults so a reviewer needs no `.env` copy step. Docker wasn't installed on my machine; installed it during Phase 1.
 
 ---
 
@@ -46,6 +46,28 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
   5. Enquiry fields: name + email required, phone + message optional.
   6. "Thank you" only after the email actually sends; otherwise error + retry.
 - **Other AI choices:** Express over Fastify (readability); price in cents, IDs as strings; stale-on-error cache; manual DI over Hilt; single Android module.
-- **My call:** _(fill in — note anything you changed)_
+- **My call:** Accepted proposals 1, 2, 3, 5 and 6 as written. Changed 4: images go through our backend so the app has zero dependency on Fake Store. Kept the Android choices (manual DI, single module, Retrofit + kotlinx.serialization).
 - **Review (10:38am):** accepted proposals 1, 2, 3, 5, 6. **Rejected 4** — I want product images routed through our backend too, so the app has zero dependency on Fake Store (not even its image host) and a provider/CDN change never touches the app.
 - **AI follow-up on 4:** image endpoint `GET /v1/products/:id/image`; `imageUrl` returned as a relative path (backend can't know the emulator's `10.0.2.2` address); backend fetches by product ID only — never a client-supplied URL — to avoid an open proxy/SSRF; only `image/*` ≤5 MB, cached 1 day.
+
+---
+
+## Phase 2 — Backend — Fri 20 Nov, 10:44am IST
+
+- **Prompt:** "Build the backend in backend/: ProductSource interface + Fake Store adapter with caching, curated top-rated config, search, image proxy, enquiry endpoint with zod validation, rate limiting and an SMTP EmailSender for Mailpit. Add a Dockerfile and wire it into docker-compose. Write tests using a fake product source. Then give me the commands to test it and walk me through the design using Android comparisons."
+- **AI output:** Express 5 + TypeScript backend (~20 source files) matching DECISIONS.md §3–4; 61 tests across 6 files using fakes (no network); multi-stage Dockerfile.
+- **How the AI checked its own work:**
+  - Typecheck + all 61 tests passed on the first run — so it **deliberately broke the code** (removed HTML escaping; made the cache store "not found") to prove the tests catch it. Both mutations failed the right test.
+  - Sent a real email through `SmtpEmailSender` to a local SMTP sink: correct To / Reply-To / Subject, HTML escaped.
+  - No Docker daemon in the AI's workspace, so it replayed the Dockerfile steps by hand (clean `npm ci`, build, prod-only install, start) — server healthy. **Real `docker compose up` still to be verified on my machine.**
+- **AI caught and fixed:** a missing `productId` gave zod's generic "expected string, received undefined" → changed to "Product is required".
+- **Design points the AI added beyond the prompt (for me to understand and defend):**
+  - "Not found" is **not cached** — otherwise requests for random IDs could grow the cache without limit.
+  - Name field rejects line breaks — blocks **email header injection** via the Reply-To name.
+  - Honeypot returns 201 but sends nothing, so bots learn nothing.
+  - Request body limit 10 KB; malformed JSON → 400, too large → 413, unknown errors → 500 without leaking internals.
+  - Provider data is **validated** with zod in the adapter — Fake Store is treated as untrusted input.
+  - Curation file lives in `backend/config/` (outside `src/`) so it can be edited without a rebuild.
+- **Risk flagged by AI:** the 5 featured IDs in `curation.json` (3, 5, 11, 18, 1) were chosen from the AI's memory of Fake Store's catalogue — verify against the live API.
+- **Setup issue (11:16am):** my first test run failed — I ran the Docker test command from my home folder, so it mounted an empty `backend/`. Re-ran from the repo root.
+- **My call:** Reviewed by behaviour and a design walkthrough rather than line by line, since TypeScript isn't my main language. Ran `docker compose up`, checked all endpoints in the browser, sent an enquiry and saw it in Mailpit, ran the tests in Docker: 61 passed. Featured products from `curation.json` look sensible. Agree with not caching "not found" and blocking line breaks in the name.

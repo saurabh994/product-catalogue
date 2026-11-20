@@ -112,43 +112,42 @@ Base path **`/v1`** (versioned so the app and API can evolve separately). JSON o
 
 ### 4.1 Backend (`backend/`)
 ```
+config/
+  curation.json             # business-chosen featured / per-category top-rated IDs (outside src so it can be edited without a rebuild)
 src/
-  server.ts                 # starts HTTP server
-  app.ts                    # builds the Express app; wires dependencies (composition root)
+  server.ts                 # composition root: picks concrete implementations, starts the server
+  app.ts                    # builds the Express app from its dependencies (tests pass fakes)
   config.ts                 # reads + validates env vars (zod) — fails fast on bad config
   domain/
-    product.ts              # Product, Category, Price types (our model)
+    product.ts              # Product, Category, Price types (our model) + accepted ID pattern
   catalogue/
-    ProductSource.ts        # interface: listProducts(), getProduct(id), listCategories()
+    ProductSource.ts        # interface: listProducts(), getProduct(id)
     fakestore/
-      FakeStoreProductSource.ts   # adapter: HTTP calls to Fake Store
-      mapFakeStoreProduct.ts      # provider shape → our Product
+      FakeStoreProductSource.ts   # adapter: HTTP calls to Fake Store (the only file that knows its URLs)
+      mapFakeStoreProduct.ts      # validates provider data, maps it to our Product
     CachedProductSource.ts  # decorator: TTL cache + stale-on-error around any ProductSource
-    CurationSource.ts       # interface + JSON-file implementation (featured / per-category IDs)
-    curation.json
-    catalogueService.ts     # featured, category split, search — pure logic, easy to test
-    catalogueRoutes.ts      # HTTP layer only: parse → call service → respond
-    imageRoutes.ts          # GET /v1/products/:id/image — fetch by product ID, stream image
+    CurationSource.ts       # interface + JSON-file implementation
+    ImageFetcher.ts         # interface + HTTP implementation (image/* only, ≤5 MB, timeout)
+    catalogueService.ts     # featured, categories, category split, search — pure logic
+    productResponse.ts      # internal Product → public API shape (hides source image URL)
+    catalogueRoutes.ts      # HTTP layer only: parse → call service → respond (incl. image proxy)
   enquiries/
     EmailSender.ts          # interface: send(message)
-    SmtpEmailSender.ts      # nodemailer → Mailpit (or any SMTP / SES SMTP)
-    enquirySchema.ts        # zod schema for POST body
-    enquiryEmail.ts         # builds the email (escaped)
-    enquiryService.ts       # validate product exists → build → send
+    SmtpEmailSender.ts      # nodemailer → Mailpit (or any SMTP, e.g. AWS SES SMTP)
+    enquirySchema.ts        # zod schema for the POST body
+    enquiryEmail.ts         # builds the email (HTML-escaped)
+    enquiryService.ts       # honeypot → product lookup → build → send
     enquiryRoutes.ts
   http/
-    errors.ts               # AppError types + error-handler middleware → error JSON shape
-    rateLimit.ts
+    errors.ts               # AppError / DataSourceError / EmailDeliveryError + error-handler → one JSON error shape
+    rateLimit.ts            # per-IP limit for enquiries
 test/
-  fakes/                    # FakeProductSource, FakeEmailSender, fixture products
-  catalogueService.test.ts
-  catalogueRoutes.test.ts
-  enquiryRoutes.test.ts
-  mapFakeStoreProduct.test.ts
-  CachedProductSource.test.ts
-Dockerfile
+  fakes/                    # FakeProductSource, FakeEmailSender, FakeImageFetcher, fixtures, buildTestApp()
+  catalogueService.test.ts  mapFakeStoreProduct.test.ts  FakeStoreProductSource.test.ts
+  CachedProductSource.test.ts  catalogueRoutes.test.ts  enquiryRoutes.test.ts
+Dockerfile                  # multi-stage, production deps only, runs as non-root, healthcheck
 ```
-Libraries: express, zod, nodemailer, express-rate-limit, helmet; dev: typescript, vitest, supertest, tsx.
+Libraries: express 5, zod 4, nodemailer, express-rate-limit, helmet; dev: typescript, vitest, supertest, tsx. Node 22.
 
 Rule: **routes know HTTP, services know business rules, adapters know providers.** Nothing above an adapter knows Fake Store exists.
 
