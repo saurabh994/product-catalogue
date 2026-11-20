@@ -31,3 +31,21 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
 - **Limitation noted:** the `api` service can't start until Phase 2 creates `backend/`, so Phase 0 verification runs Mailpit only.
 - **Setup issue (10:20am):** `docker` not recognised in my terminal — Docker Desktop wasn't installed. Committed Phase 0 anyway (files don't depend on it); installing Docker in parallel with Phase 1 and running the Mailpit check after.
 - **My call:** _(fill in)_
+
+---
+
+## Phase 1 — Plan — Fri 20 Nov, 10:31am IST
+
+- **Prompt:** "Draft DECISIONS.md: the assumptions for each acceptance criterion's gaps, the API endpoints with request/response shapes, and the module structure for both the backend and the Android app. No code yet."
+- **AI output:** `DECISIONS.md` draft — stack table, assumptions for all 5 criteria, versioned `/v1` API with shapes and error format, backend + Android module structure.
+- **Key AI proposals (marked ⚑ in DECISIONS.md) for me to confirm or change:**
+  1. Missing curated IDs are skipped, not an error.
+  2. Category "top rated" = curated per-category list, fallback to 2 highest-rated.
+  3. Search: all words must match (not whole phrase).
+  4. Product image URLs still point at Fake Store's image host.
+  5. Enquiry fields: name + email required, phone + message optional.
+  6. "Thank you" only after the email actually sends; otherwise error + retry.
+- **Other AI choices:** Express over Fastify (readability); price in cents, IDs as strings; stale-on-error cache; manual DI over Hilt; single Android module.
+- **My call:** _(fill in — note anything you changed)_
+- **Review (10:38am):** accepted proposals 1, 2, 3, 5, 6. **Rejected 4** — I want product images routed through our backend too, so the app has zero dependency on Fake Store (not even its image host) and a provider/CDN change never touches the app.
+- **AI follow-up on 4:** image endpoint `GET /v1/products/:id/image`; `imageUrl` returned as a relative path (backend can't know the emulator's `10.0.2.2` address); backend fetches by product ID only — never a client-supplied URL — to avoid an open proxy/SSRF; only `image/*` ≤5 MB, cached 1 day.
