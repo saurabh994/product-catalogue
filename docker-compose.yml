@@ -1,0 +1,25 @@
+# One command for reviewers:  docker compose up --build
+# Values come from .env if present, otherwise the defaults below (no secrets needed).
+services:
+  api:
+    build: ./backend
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: 3000
+      FAKESTORE_BASE_URL: ${FAKESTORE_BASE_URL:-https://fakestoreapi.com}
+      PRODUCT_CACHE_TTL_SECONDS: ${PRODUCT_CACHE_TTL_SECONDS:-300}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SALES_INBOX: ${SALES_INBOX:-sales@example.com}
+      ENQUIRY_FROM: ${ENQUIRY_FROM:-no-reply@catalogue.local}
+      ENQUIRY_RATE_LIMIT_PER_MINUTE: ${ENQUIRY_RATE_LIMIT_PER_MINUTE:-5}
+    depends_on:
+      - mailpit
+
+  # Local stand-in for the sales inbox. Web UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"   # web UI
+      - "1025:1025"   # SMTP
