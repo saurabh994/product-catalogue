@@ -55,6 +55,8 @@ Reviewed 10:38am: ⚑ items 1, 2, 3, 5, 6 accepted as proposed; item 4 (images) 
 - The app sends only `productId` + contact details; the **backend looks up the product** and puts its title/price in the email, so the email can't be spoofed with fake product details.
 - Sales inbox address comes from config (`SALES_INBOX`), never from the client.
 - **"Thank you" is shown only after the backend confirms the email was sent.** If sending fails, the user sees an error with a retry — we don't show a false thank-you. ⚑ Confirm
+- The app validates the form **before** sending (same rules as the backend, in `EnquiryValidator`) for instant feedback; the backend remains the source of truth and its field errors are shown on the same fields.
+- After "Thank you", Back does not return to the sent form (the form is removed from the back stack); "Back to products" returns to Home.
 - No confirmation email to the customer (criterion only asks for the sales inbox). Listed as a next step.
 - Security basics: server-side validation, HTML-escaping of user input in the email, rate limit (5/min per IP), hidden honeypot field to silently drop bots, body size limit.
 

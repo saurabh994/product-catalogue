@@ -123,7 +123,7 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
 - **Build failure 1 (12:19pm) — AI got the KSP version wrong:** sync failed with *"Using kotlin.sourceSets DSL to add Kotlin sources is not allowed with built-in Kotlin. Kotlin source set 'debug' contains: …/generated/ksp/debug/…"*.
   - Cause: the AI had pinned KSP `2.2.10-2.0.2` because AGP's docs say AGP aligns KSP to that version — but that only means it's the *minimum*. That KSP line still registers generated code through `kotlin.sourceSets`, which AGP 9's built-in Kotlin forbids. AGP 9 support only arrived in **KSP 2.3.1**, and 2.3.10 fixed R-class resolution under built-in Kotlin.
   - Fix: bumped to **KSP 2.3.12** (KSP 2.3.x is no longer tied to the Kotlin version). Rejected the alternative `android.disallowKotlinSourceSets=false` workaround — it hides the problem instead of fixing it.
-- **Build + tests:** _(pending — to add after the first build)_
+- **Build + tests:** after the KSP fix the project builds and runs on the emulator. Unit test result: _(to add)_
 
 ---
 
@@ -137,5 +137,27 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
   - Navigation: Home tile tap → `ProductRoute(id)`; screens get callbacks, not the `NavController`.
   - Tests: `MainDispatcherRule` (StandardTestDispatcher so Loading is observable) + `HomeViewModelTest` (5): starts Loading, success shows 5 products in order, error shown, retry → Loading → Success, empty list is a success not an error.
 - **Scope kept tight:** category links and the search bar on Home are added with the Category and Search screens, not here.
-- **My call:** _(fill in after build + emulator check)_
+- **Emulator check (12:46pm):** Home loads the 5 featured products from the local backend.
+- **My call:** _(fill in)_
+
+---
+
+## Phase 3b.2 — Product detail, Category, Search, Enquiry (batched) — Fri 20 Nov, 12:47pm IST
+
+- **My decision:** time was short, so I gave the remaining four screens as **one prompt** instead of one at a time. Trade-off accepted: one build/test/emulator pass at the end instead of per screen; the AI reviewed each screen as it wrote it, and I commit per screen afterwards.
+- **Prompt:** "Time is short, so build the remaining screens in one go, in this order, each with ViewModel tests using the fake repository: 1. Product detail — opened by tapping a product tile: image, title, price, category, rating, description, and an Enquire button. 2. Category — category links (chips) on Home; Category screen shows a 'Top rated' section and an 'Other products' section. 3. Search — search bar on Home; search runs only when the search button (or keyboard search action) is pressed; results screen with empty-term and no-results states. 4. Enquiry — form from the detail screen: name and email required, phone and message optional, field validation (show backend field errors too), submit to the backend, Thank-you screen only after a successful send, error with retry if sending fails. Add a Compose UI test for form → Thank you. Then tell me how to test all five acceptance criteria and give me the commit messages."
+- **AI output:**
+  - **Domain/data for enquiries:** `EnquiryRequest`, `EnquiryRepository` (+ `EnquiryRepositoryImpl`, bound in `RepositoryModule`), `SubmitEnquiryUseCase` (trims, blank optionals → null, validates before sending), `EnquiryValidator` mirroring the backend's zod rules (incl. no line breaks in name).
+  - **Shared UI:** `AppTopBar` (back button), `SearchField` (runs only on button / IME search; disabled when blank), `ProductGrid` + `productSection` helpers reused by Home/Category/Search; back/search icons as **vector drawables** (no icons library).
+  - **Home:** now also loads categories in parallel (`HomeUiState`); search bar + category chips stay usable while featured products load or fail; category failure just hides the chips.
+  - **Product detail:** image, category, title, price, rating, description; Enquire button pinned at the bottom.
+  - **Category:** title shown immediately from the route; "Top rated" + "Other products" sections (with an empty state).
+  - **Search:** results screen with its own search field to refine; blank → "Enter a search term"; no matches → "No products match …"; newest search cancels an older one.
+  - **Enquiry:** field errors from local validation **and** backend 400s (non-form fields like `productId` shown as a send error); send error keeps the input and the button becomes "Try again"; double-tap guarded; error announced to TalkBack (live region). **Thank you replaces the form in the back stack** (`popUpTo<EnquiryRoute> { inclusive = true }`) so Back can't return to a sent form; "Back to products" pops to Home.
+  - Route args are read from `SavedStateHandle` by key (`RouteArgs`) rather than `toRoute()`, so ViewModels are testable on the JVM without Robolectric.
+- **Tests added:** `HomeViewModelTest` (updated, 5), `ProductViewModelTest` (3), `CategoryViewModelTest` (4), `SearchViewModelTest` (5), `EnquiryViewModelTest` (9), `EnquiryValidatorTest` (5), `FakeEnquiryRepository`; **Compose UI test** `EnquiryFlowTest` (3, instrumented): form → Thank you, missing fields → errors and no send, failed send → error and no Thank you.
+- **AI self-review caught before I built:**
+  - `supportingText = error?.let { { Text(...) } }` would not compile — the lambda isn't inferred as `@Composable` → rewritten as `if/else`.
+  - In the UI test, the "sent" state wasn't wrapped in `remember`, so a recomposition would have reset it → fixed.
+- **My call:** _(fill in after build + emulator walkthrough)_
 

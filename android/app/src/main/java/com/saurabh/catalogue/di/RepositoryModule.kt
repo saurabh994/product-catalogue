@@ -1,6 +1,8 @@
 package com.saurabh.catalogue.di
 
+import com.saurabh.catalogue.data.repository.EnquiryRepositoryImpl
 import com.saurabh.catalogue.data.repository.ProductRepositoryImpl
+import com.saurabh.catalogue.domain.repository.EnquiryRepository
 import com.saurabh.catalogue.domain.repository.ProductRepository
 import dagger.Binds
 import dagger.Module
@@ -15,4 +17,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindProductRepository(impl: ProductRepositoryImpl): ProductRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindEnquiryRepository(impl: EnquiryRepositoryImpl): EnquiryRepository
 }

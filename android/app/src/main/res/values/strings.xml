@@ -13,4 +13,33 @@
 
     <string name="home_top_rated">Top rated</string>
     <string name="home_empty">No featured products right now. Please check back soon.</string>
+
+    <string name="action_back">Back</string>
+    <string name="search_hint">Search products</string>
+    <string name="search_action">Search</string>
+    <string name="search_title">Results for “%1$s”</string>
+    <string name="search_no_results">No products match “%1$s”. Try a different term.</string>
+    <string name="search_enter_term">Enter a search term.</string>
+
+    <string name="categories_label">Categories</string>
+    <string name="category_top_rated">Top rated</string>
+    <string name="category_others">Other products</string>
+    <string name="category_others_empty">No other products in this category yet.</string>
+
+    <string name="product_title">Product</string>
+    <string name="product_enquire">Enquire</string>
+
+    <string name="enquiry_title">Enquire</string>
+    <string name="enquiry_heading">Ask about %1$s</string>
+    <string name="enquiry_intro">Leave your details and our sales team will get back to you.</string>
+    <string name="enquiry_name">Name</string>
+    <string name="enquiry_email">Email</string>
+    <string name="enquiry_phone">Phone (optional)</string>
+    <string name="enquiry_message">Message (optional)</string>
+    <string name="enquiry_submit">Send enquiry</string>
+    <string name="enquiry_send_failed">%1$s Your details are still here.</string>
+
+    <string name="thank_you_title">Thank you!</string>
+    <string name="thank_you_body">We\'ve sent your enquiry about %1$s to our sales team. They\'ll be in touch soon.</string>
+    <string name="thank_you_done">Back to products</string>
 </resources>
