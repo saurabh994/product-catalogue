@@ -5,7 +5,7 @@ Each entry: prompt, what the AI produced, and **my call** (what I accepted, chan
 
 ---
 
-## Pre-build planning session — Thu 19 Nov, ~7:00–9:00pm IST (evening before)
+## Pre-build planning session — Thu 19 Nov, evening before (~30 min of actual planning)
 
 Not part of the build, but it shaped it, so it's recorded here and counted in time spent.
 
@@ -244,5 +244,5 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
 - Acceptance criteria on phone and emulator: Home ✅ · Category ✅ · Search ✅ · Product page ✅ · Enquiry + Mailpit email ✅
 - Start-up time after the cache fix: fast ✅
 - Launcher icon + splash on device: ✅
-- Total time: ~5h50m (evening planning ~2h + build day 10:17am → 2:05pm ≈ 3h50m)
+- Time: **build ~3h50m** (10:17am → 2:05pm, incl. ~50m of environment issues / slow Android Studio) + **planning ~30m separately** the evening before. Corrected at 2:13pm: I first accepted the AI's estimate of ~2h for the evening, but the actual planning was about half an hour; the rest of that evening was setting up the repo and tooling.
 - **Stopped at 2:05pm.** Everything works; committing, pushing and opening the PR.

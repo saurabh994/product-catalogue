@@ -69,18 +69,21 @@ The AI also caught several of its own mistakes **before** I built, which I check
 ## Time spent
 Approximate, worked out from the timestamps in `notes/ai-log.md`.
 
+### Build: ~3h50m (build day, 10:17am → 2:05pm)
 | Activity | Approx. time |
 |---|---|
-| **Evening before:** planning only (brief analysis, stack, phased plan, repo + tooling prep) | ~2h |
 | DECISIONS.md / API contract | ~15m |
 | Backend build + testing | ~30m |
 | Android build (foundation, clean-architecture/Hilt refactor, five screens, icon/splash, phone validation) | ~1h15m |
-| **Environment and slow tooling:** Docker install, Gradle download timeout, **very slow Android Studio sync/builds on my Windows laptop**, emulator | ~50m |
+| **Environment issues:** Docker install, Gradle download timeout, **very slow Android Studio sync/builds on my Windows laptop**, emulator | ~50m |
 | Testing and fixes (emulator + phone walkthroughs, 3 build failures, UI-test fixes, running on my phone) | ~45m |
 | Docs (README, DECISIONS, AI_USAGE, PR) | ~15m |
-| **Total** | **~5h50m:** ~2h planning the evening before + ~3h50m build day (10:17am → 2:05pm) |
+| **Build total** | **~3h50m** |
 
-That's over the 2–3 hour time-box. The main reasons were environment and tooling time (Android Studio was very slow on my Windows laptop; on a faster machine this would have been noticeably quicker), and choosing to finish with a native Android client, a tested backend, and instrumented UI tests running on a real device.
+About 50 minutes of that went on environment issues, mostly Android Studio being very slow on my Windows laptop. On a faster machine the build would have been noticeably quicker, and closer to the 2–3 hour time-box.
+
+### Planning: ~30m (evening before, separate)
+Analysing the brief, choosing the stack, and planning the phases with review checkpoints. No code.
 
 ## Test results at submission
 - Backend: **66 passed** (`npm test`)

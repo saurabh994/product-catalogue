@@ -1,4 +1,4 @@
-<!-- Paste into the GitHub PR (feature/catalogue-poc → main). Fill in the [placeholders] first. -->
+<!-- Paste into the GitHub PR (feature/catalogue-poc → main), without this line. -->
 
 ## Product catalogue PoC — Android (Kotlin/Compose) + Node/TypeScript backend
 
@@ -19,7 +19,7 @@ A browse / search / enquire product catalogue, built as a **foundation that can 
 | Enquiry emails the sales inbox and shows "Thank you" | ✅ email visible in Mailpit |
 
 ### How to run
-See **README.md** — `docker compose up --build`, open `android/` in Android Studio, run on an emulator, and open the inbox at http://localhost:8025.
+See **README.md** — `docker compose up --build`, open `android/` in Android Studio, run on an emulator (no config needed), and open the inbox at http://localhost:8025. A physical phone needs `adb reverse` plus one property; the README has an emulator-vs-phone table.
 
 ### Tests
 - Backend: **66** tests (services, routes, adapter, cache, enquiry security) using fakes; no network.
@@ -42,9 +42,12 @@ See **README.md** — `docker compose up --build`, open `android/` in Android St
 Enquiries are emailed, not stored; curation is a JSON file (no admin UI); in-memory cache and rate limit; no pagination, offline mode, CI or deployment. Details and reasons are in DECISIONS.md §5, and next steps in §7.
 
 ### AI usage
-Built with Claude (Opus 5.5) writing into the repo, while I directed each phase, reviewed every change, and ran every build, test and emulator check. Notable AI mistakes I caught: a KSP version incompatible with AGP 9 built-in Kotlin, and `stringResource` calls in a non-composable grid builder (both caught by my builds), plus architecture and image-sourcing choices I overruled. The full account is in **AI_USAGE.md**, the agent rules in **CLAUDE.md**, and the raw log in **notes/ai-log.md**.
+Built with Claude (Opus 5.5) writing into the repo, while I directed each phase, reviewed every change, and ran every build, test and emulator check. Notable AI mistakes I caught: a KSP version incompatible with AGP 9 built-in Kotlin, `stringResource` calls in a non-composable grid builder, outdated Espresso that crashed on recent Android, and two UI-test bugs (asserting on an off-screen node, searching the merged semantics tree). All of these were caught by my builds and test runs. I also overruled the AI on architecture and image sourcing. The full account is in **AI_USAGE.md**, the agent rules in **CLAUDE.md**, and the raw log in **notes/ai-log.md**.
 
 ### Time spent
-**~5h50m in total:** ~2h of planning the evening before, plus ~3h50m on the build day (10:17am → 2:05pm). Over the time-box: ~50m went on environment issues. Docker had to be installed, the Gradle download timed out, and **Android Studio was very slow on my Windows laptop** (sync, the first Hilt/KSP builds, the emulator); on a faster machine this would have been noticeably quicker.
-Build day breakdown: decisions ~15m · backend ~30m · Android ~1h15m · environment/tooling ~50m · testing and fixes ~45m · docs ~15m.
+**Build: ~3h50m** (today, 10:17am → 2:05pm), including about **50m lost to environment issues**. Docker had to be installed, the Gradle download timed out, and **Android Studio was very slow on my Windows laptop** (sync, the first Hilt/KSP builds, the emulator). On a faster machine the build would have been noticeably quicker.
+Breakdown: decisions ~15m · backend ~30m · Android ~1h15m · environment/tooling issues ~50m · testing and fixes ~45m · docs ~15m.
+
+**Planning: ~30m, separately** (the evening before): analysing the brief, choosing the stack, and planning the phases.
+
 Verified on the Android emulator and on a physical phone (Samsung, Android 17).
