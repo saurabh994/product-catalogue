@@ -71,3 +71,57 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
 - **Risk flagged by AI:** the 5 featured IDs in `curation.json` (3, 5, 11, 18, 1) were chosen from the AI's memory of Fake Store's catalogue — verify against the live API.
 - **Setup issue (11:16am):** my first test run failed — I ran the Docker test command from my home folder, so it mounted an empty `backend/`. Re-ran from the repo root.
 - **My call:** Reviewed by behaviour and a design walkthrough rather than line by line, since TypeScript isn't my main language. Ran `docker compose up`, checked all endpoints in the browser, sent an enquiry and saw it in Mailpit, ran the tests in Docker: 61 passed. Featured products from `curation.json` look sensible. Agree with not caching "not found" and blocking line breaks in the name.
+
+---
+
+## Phase 3a — Android foundation — Fri 20 Nov, 11:23am–12:15pm IST
+
+### Setup before the prompt
+- Created the project with Android Studio's wizard (Empty Activity, Kotlin DSL, package `com.saurabh.catalogue`). It generated AGP 9.5.1, Gradle 9.6.0, Kotlin 2.2.10, compileSdk 37, **minSdk 24** (wizard default — kept).
+- **First sync failed:** `Could not install Gradle distribution … SocketTimeoutException: Connect timed out`. Raising the wrapper `networkTimeout` (10s → 60s) didn't help. I downloaded the zip manually in the browser; the AI checked its **SHA-256 against `distributionSha256Sum` in `gradle-wrapper.properties` (exact match)**, found the wrapper cache only had an empty `.part` file, worked out the cache folder name (hash of the distribution URL) and gave me the copy command. Sync then worked.
+- Committed the untouched wizard output as its own commit, so the AI's changes are a separate, reviewable diff.
+
+### Prompt
+"I've created the Android project with the wizard in android/. Add the foundation: dependencies, BuildConfig base URL for 10.0.2.2, debug-only cleartext network config, Product model, Retrofit API, ProductRepository interface + implementation, a shared UiState sealed class, theme with design tokens, navigation shell, and a ProductTile component. Add a MockWebServer test for the API layer."
+
+### AI output
+- Version catalog + app Gradle: Retrofit 3 + kotlinx.serialization converter, OkHttp 4.12 + logging (debug only), Coil 3, Navigation Compose (type-safe routes), lifecycle ViewModel/Compose; `buildConfig = true`.
+- `API_BASE_URL`: debug `http://10.0.2.2:3000/`, overridable with the `catalogueApiBaseUrl` Gradle property (physical device) without code changes; release placeholder `https://api.example.invalid/`.
+- Network security: main config = HTTPS only; **`src/debug/` overrides it** to allow cleartext only for `10.0.2.2` and `localhost`. Release can't use HTTP.
+- Layers: `domain/` (Product, Price in minor units, `Outcome`, `AppError`) → `data/remote/` (DTOs, `CatalogueApi`, `apiCall` error mapping, mappers) → `data/ProductRepository` (interface + Remote impl) → `di/AppContainer` (manual DI) → `ui/`.
+- `AppError` sealed type: Network / NotFound / RateLimited / Validation(field errors) / Server / Unexpected — mapped once in `apiCall`, cancellation re-thrown.
+- Relative image URLs from the backend are resolved to absolute in the mapper; Coil shares the API's OkHttp client.
+- Theme: brand colour, spacing, shape and type tokens; **dynamic colour turned off** (brand consistency). `CatalogueTheme.spacing` / `.extendedColors` accessors.
+- `UiState` (Loading/Success/Error) + `LoadingView`, `ErrorView` (retry), `MessageView`; user-facing error strings in `strings.xml`.
+- Navigation shell with all 6 routes and placeholder screens; `ProductTile` with preview.
+- Tests (JVM): `RemoteProductRepositoryTest` — 13 MockWebServer tests (endpoint paths, query encoding, image URL resolution, unknown fields ignored, 400/404/429/502/503 mapping, dropped connection → Network, bad JSON → Unexpected, enquiry POST body omits nulls); `PriceTest`; `UiStateTest`.
+
+### AI limitations / decisions to review
+- The AI's workspace **could not reach Maven or Google Maven**, so it couldn't check the latest library versions — it pinned versions it knows exist and are compatible with Kotlin 2.2.10. Android Studio may suggest upgrades.
+- It **could not compile** the Android code (no Android SDK). **First real build is mine.**
+- Chose **OkHttp 4.12 + classic MockWebServer** over OkHttp 5 / `mockwebserver3`, because that's what Retrofit 3 is built on and its testing API is stable; it couldn't verify the newer API offline.
+- Used a "★" text glyph instead of `Icons.Filled.Star`, because recent Material3 no longer pulls in the icons artifact.
+- Self-review caught a `decodeFromString<T>()` call whose import differs across kotlinx.serialization versions → switched to the explicit-serializer overload.
+- Left the wizard's `ExampleUnitTest` / `ExampleInstrumentedTest` in place.
+
+- **My review (12:09pm) — three changes I asked for:**
+  1. **Clean architecture.** The AI's first version had layers but the repository interface sat in `data` and ViewModels would have called it directly. I asked for proper clean architecture.
+  2. **No hard-coded network URLs** — I wanted a network constants file.
+  3. **Use a DI library** (Hilt or Koin) instead of the hand-written `AppContainer`.
+- **Prompt:** "2 things have we added clean architecture if not add that, and also dont hardcode network urls create a netwokr constant file and also have we created depndnecy like coil or hilt lets use one of that" → follow-up: "hilt or coin which is better do according to that".
+- **AI response:**
+  - Clarified that Coil (images, already used) and Hilt (DI) aren't alternatives; compared **Hilt vs Koin** and recommended Hilt (compile-time safety, Google-recommended, `hiltViewModel()`).
+  - **Checked compatibility on the web before adding it:** Hilt's Gradle plugin only supports AGP 9 from **Dagger 2.59**; kapt doesn't work with AGP 9's built-in Kotlin, so **KSP** is required, and AGP 9 aligns KSP to `2.2.10-2.0.2`. Pinned Hilt 2.59.2 + KSP 2.2.10-2.0.2.
+  - Restructured: `domain/{model,common,repository,usecase}`, `data/{remote,mapper,repository}`, `di/{NetworkModule,RepositoryModule}`. Removed `AppContainer`. Repository interface moved to `domain`.
+  - Added 5 use cases; `SearchProductsUseCase` now trims and rejects blank/over-long terms **before** any network call (moved out of the repository).
+  - `NetworkConstants`: endpoint paths, params, timeouts, content type; Retrofit annotations use the constants. Base URLs moved from `build.gradle.kts` into `gradle.properties`.
+  - Self-review: the `@ApiBaseUrl` qualifier was first put in `di/`, making `data` import `di` → moved it into `data/remote` so dependencies point the right way. Verified with grep that `domain/` imports nothing from `data`/`ui`/`di`.
+  - Tests: repository test renamed to `ProductRepositoryImplTest`; added `FakeProductRepository`, `SearchProductsUseCaseTest` (5), `ProductUseCasesTest` (4).
+- **My call:** Reviewed the foundation as the Android developer and asked for three changes: proper clean architecture (repository interface in `domain`, ViewModels go through use cases), a `NetworkConstants` file with no hard-coded URLs, and a real DI library. Chose **Hilt over Koin** after the comparison — compile-time safety and `hiltViewModel()` matter more to me than Koin's simpler setup. Kept the AI's other choices: OkHttp 4.12 + classic MockWebServer, dynamic colour off, sealed `AppError`, minSdk 24 from the wizard.
+- **My review (12:16pm):** "also in catalogapi retrofit instnace that can be created though module irght" — the Retrofit instance was still built by a helper in `CatalogueApi.kt`, mixing the API definition with its setup.
+  - **AI fix:** `CatalogueApi.kt` now only declares endpoints. `NetworkModule` provides each step separately — `@ApiBaseUrl HttpUrl` → `Json` → `OkHttpClient` → **`Retrofit`** → `CatalogueApi` — so any piece can be swapped on its own. The repository test now builds its API with `NetworkModule.provideRetrofit(...)` / `provideCatalogueApi(...)`, i.e. the exact production configuration.
+- **Build failure 1 (12:19pm) — AI got the KSP version wrong:** sync failed with *"Using kotlin.sourceSets DSL to add Kotlin sources is not allowed with built-in Kotlin. Kotlin source set 'debug' contains: …/generated/ksp/debug/…"*.
+  - Cause: the AI had pinned KSP `2.2.10-2.0.2` because AGP's docs say AGP aligns KSP to that version — but that only means it's the *minimum*. That KSP line still registers generated code through `kotlin.sourceSets`, which AGP 9's built-in Kotlin forbids. AGP 9 support only arrived in **KSP 2.3.1**, and 2.3.10 fixed R-class resolution under built-in Kotlin.
+  - Fix: bumped to **KSP 2.3.12** (KSP 2.3.x is no longer tied to the Kotlin version). Rejected the alternative `android.disallowKotlinSourceSets=false` workaround — it hides the problem instead of fixing it.
+- **Build + tests:** _(pending — to add after the first build)_
+

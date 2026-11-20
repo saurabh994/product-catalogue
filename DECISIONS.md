@@ -151,36 +151,49 @@ Libraries: express 5, zod 4, nodemailer, express-rate-limit, helmet; dev: typesc
 
 Rule: **routes know HTTP, services know business rules, adapters know providers.** Nothing above an adapter knows Fake Store exists.
 
-### 4.2 Android (`android/`)
-Single `:app` module, organised by layer then feature (multi-module would be overkill for 5 screens; see growth).
+### 4.2 Android (`android/`) — clean architecture + Hilt
+Single `:app` module, **layered by clean architecture** (multi-module per layer/feature is the growth path). Generated with Android Studio's wizard — AGP 9.5, Gradle 9.6, Kotlin 2.2, compileSdk 37, minSdk 24.
+
+Dependency rule: **ui → domain ← data**. `domain` is plain Kotlin (only `javax.inject` annotations) and imports nothing from `data`, `ui` or `di`.
 ```
-com.<package>.catalogue/
-  CatalogueApp.kt           # Application; creates AppContainer
-  di/AppContainer.kt        # manual DI: OkHttp, Retrofit, repositories
-  domain/model/             # Product, Category, Price, EnquiryRequest (app's own models)
-  data/
+com.saurabh.catalogue/
+  CatalogueApp.kt           # @HiltAndroidApp; provides Coil's ImageLoader using the injected OkHttp client
+  MainActivity.kt           # @AndroidEntryPoint; CatalogueTheme { AppNavHost() }
+  domain/                   # business layer — no Android, no Retrofit
+    model/Product.kt        # Product, Price (minor units), Category, Rating, CategoryProducts
+    common/Outcome.kt       # Outcome<T> (Success/Failure) + AppError sealed type
+    repository/ProductRepository.kt   # interface (owned by domain, implemented by data)
+    usecase/ProductUseCases.kt        # GetFeaturedProducts, GetCategories, GetCategoryProducts, GetProduct, SearchProducts
+  data/                     # implements domain interfaces
     remote/
-      CatalogueApi.kt       # Retrofit interface mirroring section 3
-      dto/                  # @Serializable DTOs
-      mappers.kt            # DTO → domain
-    ProductRepository.kt    # interface used by ViewModels
-    EnquiryRepository.kt    # interface
-    RemoteProductRepository.kt / RemoteEnquiryRepository.kt
-    Result handling: errors mapped to a small AppError (Network, NotFound, Validation, Server)
+      NetworkConstants.kt   # base URL (from BuildConfig), endpoint paths, params, timeouts, content type
+      CatalogueApi.kt       # Retrofit interface only (endpoints from NetworkConstants)
+      ApiCall.kt            # apiCall {}: HTTP/IO/parse errors → AppError, cancellation re-thrown
+      ApiBaseUrl.kt         # Hilt qualifier
+      dto/CatalogueDtos.kt  # @Serializable wire shapes
+    mapper/ProductMapper.kt # DTO → domain; resolves relative image URLs
+    repository/ProductRepositoryImpl.kt
+  di/                       # Hilt modules — the only place interfaces meet implementations
+    NetworkModule.kt        # base URL → Json → OkHttp → Retrofit → CatalogueApi, one @Provides each
+    RepositoryModule.kt     # @Binds ProductRepository → ProductRepositoryImpl
   ui/
-    theme/                  # design tokens: colours, type, spacing, shapes
-    common/                 # UiState<T>, ProductTile, LoadingView, ErrorView (retry)
-    home/                   # HomeScreen + HomeViewModel (featured + category chips + search bar)
-    category/
-    search/
-    product/
-    enquiry/                # form + ThankYou
-  navigation/AppNavHost.kt  # routes: home, category/{slug}, search?q=, product/{id}, enquiry/{productId}, thank-you
-res/xml/network_security_config.xml  # debug only: cleartext allowed for 10.0.2.2
+    theme/                  # tokens: Color.kt (BrandColors), Tokens.kt (spacing, shapes), Type.kt, Theme.kt
+    common/                 # UiState, ProductTile, LoadingView / ErrorView / MessageView
+    home/ category/ search/ product/ enquiry/   # screens + @HiltViewModel ViewModels that call use cases (Phase 3b)
+  navigation/               # Routes.kt (@Serializable type-safe routes), AppNavHost.kt
+src/main/res/xml/network_security_config.xml   # HTTPS only
+src/debug/res/xml/network_security_config.xml  # debug override: cleartext only for 10.0.2.2 / localhost
 ```
-Libraries: Compose (BOM), Navigation Compose, lifecycle-viewmodel-compose, Retrofit + kotlinx-serialization converter, OkHttp, Coil. Tests: JUnit4, kotlinx-coroutines-test, MockWebServer, Compose UI test.
-- `BASE_URL` via `BuildConfig` (debug: `http://10.0.2.2:3000/`).
-- Manual DI over Hilt: fewer build steps and faster setup for a reviewer; easy to move to Hilt when the app grows.
+Libraries: Compose (BOM), Navigation Compose (type-safe), lifecycle ViewModel/Compose, **Hilt 2.59.2 (KSP)** + hilt-navigation-compose, Retrofit 3 + kotlinx-serialization converter, OkHttp 4.12, **Coil 3** (images). Tests: JUnit4, kotlinx-coroutines-test, MockWebServer, Compose UI test.
+
+Decisions:
+- **Clean architecture** (my call): the repository interface lives in `domain`, so swapping our API for a cache/DB/other backend is a `data` change only. Use cases are thin today but are where business rules go (e.g. `SearchProductsUseCase` already validates/trims input before any network call).
+- **Hilt over manual DI and Koin** (my call; replaces the earlier manual-DI proposal): compile-time-checked graph, Google-recommended, `hiltViewModel()` integrates with Navigation Compose. Koin is simpler but fails at runtime. Hilt **2.59+** is required: it's the first release whose Gradle plugin supports AGP 9. Uses **KSP** (kapt is incompatible with AGP 9's built-in Kotlin); KSP `2.2.10-2.0.2` matches AGP 9's bundled Kotlin 2.2.10.
+- **No hard-coded URLs** (my call): base URLs are Gradle properties in `android/gradle.properties` (`catalogue.apiBaseUrl.debug` / `.release`) → `BuildConfig.API_BASE_URL` → `NetworkConstants.BASE_URL`. Endpoint paths and params are `const`s in `NetworkConstants` and used directly in Retrofit annotations. The only literal hosts left are in the debug network-security XML (Android requires them there).
+- **Coil 3** for images, sharing the API's OkHttp client.
+- OkHttp 4.12 (not 5.x): it's what Retrofit 3 is built on, and MockWebServer's classic API is stable.
+- Dynamic (wallpaper) colour off: the brand's look must be consistent and fully controlled by tokens.
+- Errors are a sealed `AppError` mapped once in the data layer; screens never see HTTP codes or exceptions.
 
 ---
 

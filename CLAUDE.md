@@ -21,6 +21,9 @@ Customers browse, search, view products and send an enquiry that emails the sale
 8. **No paid services or accounts** needed to run locally.
 
 ## Conventions
+- Android: **clean architecture** — `ui → domain ← data`; `domain` imports nothing from `data`/`ui`/`di`. ViewModels call **use cases**, never repositories or Retrofit directly.
+- Android DI: **Hilt** (KSP). Interfaces are bound to implementations only in `di/` modules. ViewModels are `@HiltViewModel`, obtained with `hiltViewModel()`.
+- Android: **no hard-coded URLs or endpoint strings** — base URL from `gradle.properties` → BuildConfig → `NetworkConstants`; paths/params in `NetworkConstants`.
 - Android: one `UiState` sealed class (Loading / Success / Error) reused by every screen. Screens are stateless composables; ViewModels own state.
 - Android emulator reaches the backend at `http://10.0.2.2:3000` (BuildConfig). Cleartext HTTP allowed in **debug only**.
 - Keep it small: prefer the simplest thing that keeps the boundaries clean. No new libraries without a reason recorded in DECISIONS.md.

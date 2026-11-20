@@ -1,7 +1,19 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
+
+/**
+ * Backend base URLs come from gradle.properties (no URLs hard-coded in build logic or Kotlin).
+ * Override per machine without touching the repo, e.g. in ~/.gradle/gradle.properties:
+ *   catalogue.apiBaseUrl.debug=http://192.168.1.20:3000/
+ */
+fun apiBaseUrl(buildType: String): String =
+    providers.gradleProperty("catalogue.apiBaseUrl.$buildType").orNull
+        ?: error("Missing Gradle property catalogue.apiBaseUrl.$buildType (see gradle.properties)")
 
 android {
     namespace = "com.saurabh.catalogue"
@@ -20,7 +32,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl("debug")}\"")
+        }
         release {
+            // Release builds never allow cleartext; the value is a placeholder until there is a deployed HTTPS backend.
+            buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl("release")}\"")
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
@@ -33,6 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -45,7 +63,26 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.navigation.compose)
+
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

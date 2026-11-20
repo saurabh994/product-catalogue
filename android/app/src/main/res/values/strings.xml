@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">Catalogue</string>
+
+    <string name="action_retry">Try again</string>
+    <string name="rating_format">%1$.1f (%2$d)</string>
+
+    <string name="error_network">Can\'t reach the catalogue. Check your connection and try again.</string>
+    <string name="error_not_found">We couldn\'t find that.</string>
+    <string name="error_rate_limited">Too many attempts. Please wait a minute and try again.</string>
+    <string name="error_validation">Please check the highlighted fields.</string>
+    <string name="error_server">Something went wrong on our side. Please try again.</string>
+    <string name="error_unexpected">Something unexpected happened. Please try again.</string>
 </resources>
