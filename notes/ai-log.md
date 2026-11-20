@@ -125,3 +125,17 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
   - Fix: bumped to **KSP 2.3.12** (KSP 2.3.x is no longer tied to the Kotlin version). Rejected the alternative `android.disallowKotlinSourceSets=false` workaround — it hides the problem instead of fixing it.
 - **Build + tests:** _(pending — to add after the first build)_
 
+---
+
+## Phase 3b.1 — Home screen — Fri 20 Nov, 12:33pm IST
+
+- **Context:** first build of the foundation was still running (slow first run: Hilt/KSP/Retrofit/Coil downloads). I committed locally as a checkpoint and held the push until the build passes; the AI wrote Home in parallel, and I don't start a new build until the current one finishes.
+- **Prompt:** "Build the Home screen showing the 5 top-rated products, with its ViewModel handling loading, success and error. Add ViewModel tests with a fake repository."
+- **AI output:**
+  - `HomeViewModel` (`@HiltViewModel`): depends on `GetFeaturedProductsUseCase` (not the repository), exposes `StateFlow<UiState<List<Product>>>`, loads in `init`, `retry()` cancels any in-flight load before starting a new one.
+  - `HomeScreen` (stateful, `hiltViewModel()` + `collectAsStateWithLifecycle`) → `HomeContent` (stateless, previewable). Adaptive `LazyVerticalGrid` (2 columns on a phone, more on tablets), "Top rated" heading with accessibility `heading()` semantics, Loading / Error-with-retry / empty states, previews for success and error.
+  - Navigation: Home tile tap → `ProductRoute(id)`; screens get callbacks, not the `NavController`.
+  - Tests: `MainDispatcherRule` (StandardTestDispatcher so Loading is observable) + `HomeViewModelTest` (5): starts Loading, success shows 5 products in order, error shown, retry → Loading → Success, empty list is a success not an error.
+- **Scope kept tight:** category links and the search bar on Home are added with the Category and Search screens, not here.
+- **My call:** _(fill in after build + emulator check)_
+

@@ -10,4 +10,7 @@
     <string name="error_validation">Please check the highlighted fields.</string>
     <string name="error_server">Something went wrong on our side. Please try again.</string>
     <string name="error_unexpected">Something unexpected happened. Please try again.</string>
+
+    <string name="home_top_rated">Top rated</string>
+    <string name="home_empty">No featured products right now. Please check back soon.</string>
 </resources>
