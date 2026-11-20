@@ -3,6 +3,7 @@ agp = "9.5.1"
 kotlin = "2.2.10"
 composeBom = "2026.02.01"
 coreKtx = "1.16.0"
+coreSplashscreen = "1.0.1"
 activityCompose = "1.10.1"
 lifecycle = "2.9.2"
 navigationCompose = "2.9.3"
@@ -19,11 +20,13 @@ hiltNavigationCompose = "1.2.0"
 # (2.2.x registered sources via kotlin.sourceSets, which built-in Kotlin rejects); 2.3.10 fixed R-class resolution.
 ksp = "2.3.12"
 junit = "4.13.2"
-junitVersion = "1.1.5"
-espressoCore = "3.5.1"
+# androidx.test: 3.5.1/1.1.5 (wizard defaults) crash on recent Android (InputManager.getInstance removed).
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }

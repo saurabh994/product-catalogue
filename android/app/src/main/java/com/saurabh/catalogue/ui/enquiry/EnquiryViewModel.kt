@@ -46,7 +46,10 @@ class EnquiryViewModel @Inject constructor(
     // Editing a field clears that field's error and any send error, so the form never shows stale messages.
     fun onNameChange(value: String) = edit(EnquiryValidator.NAME) { copy(name = value) }
     fun onEmailChange(value: String) = edit(EnquiryValidator.EMAIL) { copy(email = value) }
-    fun onPhoneChange(value: String) = edit(EnquiryValidator.PHONE) { copy(phone = value) }
+    /** Digits only, capped at 10, so the field can never hold an invalid number. */
+    fun onPhoneChange(value: String) = edit(EnquiryValidator.PHONE) {
+        copy(phone = value.filter(Char::isDigit).take(EnquiryValidator.PHONE_MAX_DIGITS))
+    }
     fun onMessageChange(value: String) = edit(EnquiryValidator.MESSAGE) { copy(message = value) }
 
     private fun edit(field: String, change: EnquiryFormState.() -> EnquiryFormState) {

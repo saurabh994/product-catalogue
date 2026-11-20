@@ -17,11 +17,11 @@ export const enquirySchema = z.object({
     .trim()
     .max(254, 'Email is too long')
     .pipe(z.email('Enter a valid email address')),
+  // Assumption (DECISIONS.md §2.5): local numbers only — up to 10 digits, no country code or separators.
   phone: z
     .string()
     .trim()
-    .max(30, 'Phone must be 30 characters or fewer')
-    .regex(/^[+0-9 ()-]*$/, 'Phone can only contain digits, spaces and + ( ) -')
+    .regex(/^[0-9]{0,10}$/, 'Phone must be up to 10 digits')
     .optional()
     .transform((v) => v || undefined),
   message: z

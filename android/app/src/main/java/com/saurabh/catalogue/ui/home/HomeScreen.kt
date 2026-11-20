@@ -57,6 +57,8 @@ fun HomeContent(
     modifier: Modifier = Modifier,
 ) {
     Scaffold(modifier = modifier, topBar = { AppTopBar(stringResource(R.string.app_name)) }) { innerPadding ->
+        // Resolve strings here: the grid's item builder below is not a @Composable context.
+        val topRatedTitle = stringResource(R.string.home_top_rated)
         // Search and categories stay usable even while featured products load or fail.
         ProductGrid(Modifier.padding(innerPadding).testTag("home_grid")) {
             fullWidthItem(key = "search") { SearchField(onSearch = onSearch) }
@@ -72,7 +74,7 @@ fun HomeContent(
                             MessageView(stringResource(R.string.home_empty), Modifier.testTag("home_empty"))
                         }
                     } else {
-                        productSection(stringResource(R.string.home_top_rated), featured.data, onProductClick, "featured")
+                        productSection(topRatedTitle, featured.data, onProductClick, "featured")
                     }
             }
         }

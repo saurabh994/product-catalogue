@@ -98,7 +98,7 @@ fun EnquiryContent(
             FormField(
                 value = state.phone, onValueChange = onPhoneChange, label = stringResource(R.string.enquiry_phone),
                 error = state.fieldErrors[EnquiryValidator.PHONE], tag = "enquiry_phone", enabled = !state.isSubmitting,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
             )
             FormField(
                 value = state.message, onValueChange = onMessageChange, label = stringResource(R.string.enquiry_message),

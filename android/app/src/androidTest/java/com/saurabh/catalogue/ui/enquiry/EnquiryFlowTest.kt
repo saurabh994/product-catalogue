@@ -88,8 +88,13 @@ class EnquiryFlowTest {
 
         composeRule.onNodeWithTag("enquiry_submit").performScrollTo().performClick()
 
-        composeRule.onNodeWithTag("enquiry_name_error").assertIsDisplayed()
-        composeRule.onNodeWithTag("enquiry_email_error").assertIsDisplayed()
+        // Field errors are the text field's supporting text. OutlinedTextField merges its children into one
+        // semantics node, so look them up in the *unmerged* tree. Tapping Send scrolled the form down,
+        // so scroll each error back into view before asserting it's visible.
+        composeRule.waitUntil(timeoutMillis = 5_000) { composeRule.onAllNodesWithTagExists("enquiry_name_error") }
+        composeRule.onNodeWithTag("enquiry_name_error", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("enquiry_email_error", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("thank_you").assertDoesNotExist()
         assertTrue(repository.submitted.isEmpty())
     }
 
@@ -105,10 +110,11 @@ class EnquiryFlowTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTagExists("enquiry_submit_error")
         }
-        composeRule.onNodeWithTag("enquiry_submit_error").assertIsDisplayed()
+        composeRule.onNodeWithTag("enquiry_submit_error").performScrollTo().assertIsDisplayed()
         assertTrue(!composeRule.onAllNodesWithTagExists("thank_you"))
     }
 
+    /** True if any node has [tag]. Searches the unmerged tree so tags inside merged nodes (e.g. text-field supporting text) are found. */
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onAllNodesWithTagExists(tag: String): Boolean =
-        onAllNodes(androidx.compose.ui.test.hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+        onAllNodes(androidx.compose.ui.test.hasTestTag(tag), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 }

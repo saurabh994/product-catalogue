@@ -7,4 +7,7 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Brand tokens used by XML resources (launcher icon, splash). Keep in sync with ui/theme/Color.kt. -->
+    <color name="brand_primary">#FF1F4E79</color>
+    <color name="brand_accent">#FFE07A45</color>
 </resources>

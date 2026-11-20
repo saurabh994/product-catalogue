@@ -46,4 +46,20 @@ describe('CachedProductSource', () => {
     inner.products = [...inner.products, { ...inner.products[0]!, id: 'new' }];
     expect((await cached.getProduct('new'))?.id).toBe('new');
   });
+
+  it('shares one upstream request between concurrent callers (no stampede)', async () => {
+    const { inner, cached } = setup();
+    const [a, b] = await Promise.all([cached.listProducts(), cached.listProducts()]);
+    expect(inner.listCalls).toBe(1);
+    expect(a).toBe(b);
+  });
+
+  it('lets the next caller retry after a shared request fails', async () => {
+    const { inner, cached } = setup();
+    inner.failing = true;
+    await expect(Promise.all([cached.listProducts(), cached.listProducts()])).rejects.toBeInstanceOf(DataSourceError);
+    expect(inner.listCalls).toBe(1);
+    inner.failing = false;
+    await expect(cached.listProducts()).resolves.toHaveLength(inner.products.length);
+  });
 });

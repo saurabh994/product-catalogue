@@ -31,6 +31,12 @@ const app = createApp({
 
 const server = app.listen(config.PORT, () => {
   console.info(`Catalogue API listening on http://localhost:${config.PORT}`);
+  // Warm the cache so the first customer doesn't wait for the (slow) upstream source.
+  // Failure is harmless: the first real request simply fetches again.
+  productSource
+    .listProducts()
+    .then((products) => console.info(`[cache] warmed with ${products.length} products`))
+    .catch((error: unknown) => console.warn('[cache] warm-up failed, will load on first request:', String(error)));
 });
 
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {

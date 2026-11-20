@@ -19,7 +19,9 @@ object EnquiryValidator {
     val FORM_FIELDS = setOf(NAME, EMAIL, PHONE, MESSAGE)
 
     private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
-    private val PHONE_PATTERN = Regex("^[+0-9 ()-]*$")
+    /** Assumption: local numbers only — digits, at most 10 (no country code). */
+    const val PHONE_MAX_DIGITS = 10
+    private val PHONE_PATTERN = Regex("^[0-9]{0,10}$")
 
     /** Returns field → message for every invalid field; empty when the request is valid. */
     fun validate(request: EnquiryRequest): Map<String, String> = buildMap {
@@ -33,10 +35,7 @@ object EnquiryValidator {
             request.email.length > 254 || !EMAIL_PATTERN.matches(request.email) -> put(EMAIL, "Enter a valid email address")
         }
         request.phone?.let {
-            when {
-                it.length > 30 -> put(PHONE, "Phone must be 30 characters or fewer")
-                !PHONE_PATTERN.matches(it) -> put(PHONE, "Phone can only contain digits, spaces and + ( ) -")
-            }
+            if (!PHONE_PATTERN.matches(it)) put(PHONE, "Phone must be up to $PHONE_MAX_DIGITS digits")
         }
         request.message?.let {
             if (it.length > 1000) put(MESSAGE, "Message must be 1000 characters or fewer")

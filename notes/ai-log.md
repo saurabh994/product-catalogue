@@ -123,7 +123,7 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
 - **Build failure 1 (12:19pm) — AI got the KSP version wrong:** sync failed with *"Using kotlin.sourceSets DSL to add Kotlin sources is not allowed with built-in Kotlin. Kotlin source set 'debug' contains: …/generated/ksp/debug/…"*.
   - Cause: the AI had pinned KSP `2.2.10-2.0.2` because AGP's docs say AGP aligns KSP to that version — but that only means it's the *minimum*. That KSP line still registers generated code through `kotlin.sourceSets`, which AGP 9's built-in Kotlin forbids. AGP 9 support only arrived in **KSP 2.3.1**, and 2.3.10 fixed R-class resolution under built-in Kotlin.
   - Fix: bumped to **KSP 2.3.12** (KSP 2.3.x is no longer tied to the Kotlin version). Rejected the alternative `android.disallowKotlinSourceSets=false` workaround — it hides the problem instead of fixing it.
-- **Build + tests:** after the KSP fix the project builds and runs on the emulator. Unit test result: _(to add)_
+- **Build + tests:** after the KSP fix the project builds and runs on the emulator. Unit test result: see final results at the end of this log.
 
 ---
 
@@ -138,7 +138,7 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
   - Tests: `MainDispatcherRule` (StandardTestDispatcher so Loading is observable) + `HomeViewModelTest` (5): starts Loading, success shows 5 products in order, error shown, retry → Loading → Success, empty list is a success not an error.
 - **Scope kept tight:** category links and the search bar on Home are added with the Category and Search screens, not here.
 - **Emulator check (12:46pm):** Home loads the 5 featured products from the local backend.
-- **My call:** _(fill in)_
+- **My call:** Accepted. Ran it on the emulator — Home loads the 5 featured products from the local backend. Agreed to keep the category chips and search bar out of this step so each prompt stayed small. Unit test count: see final results at the end of this log.
 
 ---
 
@@ -159,5 +159,90 @@ Not part of the build, but it shaped it, so it's recorded here and counted in ti
 - **AI self-review caught before I built:**
   - `supportingText = error?.let { { Text(...) } }` would not compile — the lambda isn't inferred as `@Composable` → rewritten as `if/else`.
   - In the UI test, the "sent" state wasn't wrapped in `remember`, so a recomposition would have reset it → fixed.
-- **My call:** _(fill in after build + emulator walkthrough)_
+- **Build failure 2 (12:56pm) — AI mistake I caught by building:** 3× `@Composable invocations can only happen from the context of a @Composable function` (CategoryScreen.kt:49/59, HomeScreen.kt:75). The AI had called `stringResource(...)` directly inside the `LazyVerticalGrid` item builder (`LazyGridScope`), which is not composable — the same class of mistake it had caught itself in the enquiry form, but missed here. Fix: resolve the strings in the composable body before `ProductGrid { }` and pass them in; checked the remaining `stringResource` calls are all inside composable lambdas.
+- **My review on the emulator (12:58pm):** Home cards had uneven heights — a 2-line title made its card taller than its 1-line neighbour. **Fix:** title `minLines = 2` (with `maxLines = 2`) in `ProductTile`, so every tile reserves the same space and prices line up across a row.
+- **My call:** Batching was my decision because of time; I accepted that mistakes would surface together at build time, and they did (build failure 2), which my build caught. On the emulator I found the uneven card heights and asked for the fix. Final test counts and the acceptance-criteria walkthrough: see final results at the end of this log.
 
+---
+
+## Phase 5 — Docs — Fri 20 Nov, 1:01pm IST (written while the build was still running)
+
+- **Prompt:** "Write the README with setup and run steps for a reviewer, finalise DECISIONS.md including what we dropped and what I'd do next with another day, turn notes/ai-log.md into AI_USAGE.md, and draft the PR description including time spent. also say android studio in windows in my laptop was very slow so more time was spent in that other wise would be done quicker"
+- **AI output:** `README.md` (prerequisites, ≈10-minute run steps, acceptance-criteria walkthrough, tests, configuration incl. physical device, layout, troubleshooting); DECISIONS.md §5 dropped/simplified (table with reasons), §6 growth (one row per thing the brief says will change), §7 next day; `AI_USAGE.md` (tools, CLAUDE.md, plan, 5 key moments, 6 AI mistakes and how each was caught, self-caught mistakes, environment issues incl. slow Android Studio on Windows, review approach, time table); `notes/PR_DESCRIPTION.md` draft.
+- **Placeholders left for me:** final total time, Android unit/UI test counts, acceptance-criteria results.
+- **My call:** Asked for the slow Android Studio on my Windows laptop to be stated honestly in AI_USAGE.md and the PR as the main reason for going over time. I'll check the AI's estimated time breakdown against my own and correct it before submitting.
+
+---
+
+## Polish after first full run — Fri 20 Nov, 1:06pm IST
+
+- **Prompt:** "one thing on app open its taking 10 seconds to open homepage, second thing on search after few characters can we auto search instead of clicking on button, also can we add some app launcher good icon same for splash"
+- **1. Slow first load (~10s):**
+  - AI diagnosis: most likely the backend, not the app — after a restart the cache is empty so the first request waits on Fake Store, and Home fires **two requests at once** (featured + categories) which each triggered their own Fake Store download (cache stampede). Debug builds on an emulator also start slower than release.
+  - Fix (backend): **warm the cache at server start**, and **de-duplicate concurrent cache misses** in `CachedProductSource` (callers share one in-flight request; a failed shared request doesn't poison the next call).
+  - Tests: +2 (63 total). AI broke the de-dupe on purpose — both new tests failed, then passed when restored.
+- **2. Auto-search while typing — AI pushed back, and I agreed:** the acceptance criterion explicitly says "WHEN I click the search button", and DECISIONS.md records "not search-as-you-type". Auto-search from Home would also jump to the results screen mid-typing. Kept the button (and keyboard search action). Offered option, not taken: debounced auto-search (3+ chars) on the results screen only, recorded as a deviation.
+- **3. Launcher icon + splash:**
+  - Original icon: white shopping bag with an accent rim on the brand blue. AI's first render read as a **padlock** (narrow handle + centre dot = keyhole) — it checked the rendered preview, caught that, and redrew it with a wide handle and a rim band.
+  - Adaptive icon (vector foreground/background) + **monochrome** layer for Android 13 themed icons; PNG/WebP fallbacks for API 24–25 rendered from the same design.
+  - Splash: AndroidX `core-splashscreen` (backports the Android 12 splash API to minSdk 24) with `Theme.Catalogue.Starting` (brand blue + bag icon), `installSplashScreen()` before `super.onCreate`.
+  - Brand colours used by XML (`brand_primary`, `brand_accent`) live in `colors.xml`, noted to keep in sync with `ui/theme/Color.kt`.
+- **My call:** Raised all three myself after using the app. Accepted the AI's push-back on auto-search — the criterion says "click the search button" and I'd rather meet it exactly than add a deviation. Accepted the backend cache fix and the icon/splash. Start-up time and icon/splash on device: see final results at the end of this log.
+
+---
+
+## Running on a physical phone — Fri 20 Nov, 1:11–1:21pm IST
+
+- **Prompt:** "how to run in phone"
+- **AI answer:** USB + `adb reverse tcp:3000 tcp:3000`, so the phone reaches the laptop's backend as `localhost:3000` (no Wi-Fi/IP/firewall setup; the debug network-security config already allows `localhost`). The debug base URL is overridden **only on my machine** in `~/.gradle/gradle.properties` (`catalogue.apiBaseUrl.debug=http://localhost:3000/`), with no committed file changes. README updated with these steps, and Wi-Fi as the alternative.
+- **Issues:**
+  - `adb reverse` failed with **"more than one device"** because the emulator was still running. Fix: `adb -d …` (USB device only).
+  - The phone browser didn't show `/health` at first → the AI gave a step-by-step check (backend up on the laptop? `adb devices` authorised? `adb -d reverse --list` shows the mapping? `http://` typed explicitly?). Rebuilding for the phone at 1:21pm.
+- **Root cause found with Logcat (1:25pm):** `HTTP FAILED: SocketTimeoutException: failed to connect to /10.0.2.2 (port 3000) … after 10000ms` — the app was still built with the emulator URL, so my user-folder override hadn't been picked up. Fix: set `catalogue.apiBaseUrl.debug=http://localhost:3000/` in `android/gradle.properties` temporarily + clean build → **works on my phone (1:33pm)**. Must be reverted to `10.0.2.2` before committing so reviewers' emulators work.
+- **README updated (my request):** an "Emulator vs physical phone" table — emulator needs no change; phone needs `adb -d reverse` + the `localhost` URL (per-machine file recommended, or the project file with a "change it back" warning) + a clean build, plus how to verify in Logcat.
+- **Note:** the `localhost` override also applies to the emulator, so either run `adb -e reverse tcp:3000 tcp:3000` for it too or remove the override.
+
+---
+
+## Phone number rule — Fri 20 Nov, 1:34pm IST
+
+- **Prompt:** "phone number field keep max as 10 digits"
+- **AI flagged the trade-off first:** 10 digits only means no country code (`+91 98765 43210` is rejected), i.e. local Indian mobile numbers are assumed. I accepted that for the PoC; it's recorded in DECISIONS.md §2.5 with the growth path (E.164 + country picker).
+- **Changes:**
+  - Backend zod: phone `^[0-9]{0,10}$` → "Phone must be up to 10 digits". Tests: +4 rejected cases (letters, 11 digits, `+91 …`, hyphen) → **66 passed**.
+  - Android: `EnquiryValidator` uses the same rule (`PHONE_MAX_DIGITS = 10`). `onPhoneChange` keeps digits only and caps at 10, so the field can't hold an invalid value. Number-pad keyboard; label "Phone (optional, 10 digits)". Tests updated: validator cases and a new ViewModel test for filtering and capping.
+- **My call:** Wanted the field to match how customers here write numbers; the backend enforces it too, so app and API can't disagree.
+
+---
+
+## Build failure 3 — instrumented UI tests — Fri 20 Nov, 1:42pm IST
+
+- Ran `connectedDebugAndroidTest`: **all 3 `EnquiryFlowTest` tests failed in 0.7s**, before any test step ran. The AI read the Gradle report: `NoSuchMethodException: android.hardware.input.InputManager.getInstance` inside Espresso's `InputManagerEventInjectionStrategy`.
+- **Cause:** not our test code. The wizard pinned `espresso-core 3.5.1` / `ext:junit 1.1.5`; Espresso 3.5 reflects on a hidden Android API that newer Android versions removed (replaced by `InputManagerGlobal`), and Compose UI tests use Espresso to wait for idle.
+- **Fix:** bumped to the current androidx.test releases from Android's docs: `espresso-core 3.7.0`, `ext:junit 1.3.0`.
+- **Lesson:** the AI kept the wizard's test versions on the reasoning that wizard defaults are safe; for the test libraries that wasn't true. Unit tests didn't catch it because they run on the JVM, not on a device.
+
+- **After the Espresso fix (1:47pm)** the tests ran, and one failed for a real reason: `missingRequiredFieldsShowErrorsAndStayOnTheForm` → *"The component with TestTag = 'enquiry_name_error' is not displayed"*. **AI test bug:** the test scrolls down to tap Send, which pushes the name field's error off the top of the screen, and `assertIsDisplayed()` needs the node on screen. Fix: wait for the error, `performScrollTo()` each error before asserting (what a user would do), and also assert no Thank you appeared. Same scroll fix applied to the send-error assertion.
+
+- **1:50pm:** all 3 failed with *"No compose hierarchies found"* — the run was on my **phone (SM-S721B, Android 17) with the screen locked**, so the test activity couldn't come to the foreground. Not a code issue; ran again with the phone unlocked.
+- **1:55pm:** **2 of 3 passed on the phone** (form → Thank you; failed send → error, no Thank you). `missingRequiredFields…` timed out waiting for `enquiry_name_error`. **AI test bug #2:** `OutlinedTextField` merges its children (label, value, supporting text) into one semantics node, and Compose test finders search the *merged* tree by default, so the tag on the supporting text was never found as its own node. Fix: look up the error tags with `useUnmergedTree = true`.
+
+- **1:58pm: instrumented UI tests 3/3 passed on my phone** (SM-S721B, Android 17): form → Thank you; missing fields → errors, nothing sent; failed send → error, no Thank you.
+
+## Pre-commit clean-up — 1:58pm IST
+- AI checked the test reports and `git status` before the final commit:
+  - The last unit-test run had only executed `EnquiryViewModelTest` (10/10) → I need to run the **full** `testDebugUnitTest` once more.
+  - `android/gradle.properties` still had the phone URL (`localhost`) → AI reverted it to `http://10.0.2.2:3000/` so reviewers' emulators work.
+  - **`android/.kotlin/` (Kotlin compiler session files) had been committed** in an earlier commit → added `.kotlin/` to `.gitignore`; I remove it from the index with `git rm -r --cached android/.kotlin`.
+
+---
+
+## Final results — 2:05pm IST
+- Android unit tests (`testDebugUnitTest`): **60 passed** (2:03pm, full suite)
+- Android Compose UI tests (`connectedDebugAndroidTest`): **3 passed** on my phone (1:58pm)
+- Backend tests: 66 passed
+- Acceptance criteria on phone and emulator: Home ✅ · Category ✅ · Search ✅ · Product page ✅ · Enquiry + Mailpit email ✅
+- Start-up time after the cache fix: fast ✅
+- Launcher icon + splash on device: ✅
+- Total time: ~5h50m (evening planning ~2h + build day 10:17am → 2:05pm ≈ 3h50m)
+- **Stopped at 2:05pm.** Everything works; committing, pushing and opening the PR.

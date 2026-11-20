@@ -50,15 +50,24 @@ class EnquiryViewModelTest {
     }
 
     @Test
-    fun `invalid email and phone are rejected`() = runTest(mainDispatcherRule.dispatcher) {
+    fun `invalid email is rejected`() = runTest(mainDispatcherRule.dispatcher) {
         val viewModel = createViewModel()
         viewModel.onNameChange("Asha")
         viewModel.onEmailChange("not-an-email")
-        viewModel.onPhoneChange("call me")
         viewModel.submit()
         testScheduler.advanceUntilIdle()
 
-        assertEquals(setOf(EnquiryValidator.EMAIL, EnquiryValidator.PHONE), viewModel.state.value.fieldErrors.keys)
+        assertEquals(setOf(EnquiryValidator.EMAIL), viewModel.state.value.fieldErrors.keys)
+    }
+
+    @Test
+    fun `phone input keeps only digits and stops at 10`() {
+        val viewModel = createViewModel()
+        viewModel.onPhoneChange("+91 98765-43210 ext")
+        assertEquals("9198765432", viewModel.state.value.phone)
+
+        viewModel.onPhoneChange("98765432109999")
+        assertEquals("9876543210", viewModel.state.value.phone)
     }
 
     @Test

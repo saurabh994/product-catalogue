@@ -45,8 +45,12 @@ fun CategoryContent(
         when (state) {
             UiState.Loading -> LoadingView(contentModifier)
             is UiState.Error -> ErrorView(state.error, onRetry, contentModifier)
-            is UiState.Success -> ProductGrid(contentModifier.testTag("category_grid")) {
-                productSection(stringResource(R.string.category_top_rated), state.data.topRated, onProductClick, "top")
+            is UiState.Success -> {
+                // Resolve strings here: the grid's item builder below is not a @Composable context.
+                val topRatedTitle = stringResource(R.string.category_top_rated)
+                val othersTitle = stringResource(R.string.category_others)
+                ProductGrid(contentModifier.testTag("category_grid")) {
+                productSection(topRatedTitle, state.data.topRated, onProductClick, "top")
                 if (state.data.others.isEmpty()) {
                     fullWidthItem(key = "others-empty") {
                         Text(
@@ -56,7 +60,8 @@ fun CategoryContent(
                         )
                     }
                 } else {
-                    productSection(stringResource(R.string.category_others), state.data.others, onProductClick, "others")
+                    productSection(othersTitle, state.data.others, onProductClick, "others")
+                }
                 }
             }
         }

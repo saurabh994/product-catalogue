@@ -33,9 +33,11 @@ class EnquiryValidatorTest {
     }
 
     @Test
-    fun `phone allows digits, spaces and + ( ) -`() {
-        assertTrue(EnquiryValidator.validate(request(phone = "+91 (987) 654-3210")).isEmpty())
-        assertTrue(EnquiryValidator.PHONE in EnquiryValidator.validate(request(phone = "call me")))
+    fun `phone is digits only, up to 10`() {
+        assertTrue(EnquiryValidator.validate(request(phone = "9876543210")).isEmpty())
+        listOf("98765432101", "+91 9876543210", "98765-43210", "call me").forEach {
+            assertTrue("'$it' should be invalid", EnquiryValidator.PHONE in EnquiryValidator.validate(request(phone = it)))
+        }
     }
 
     @Test

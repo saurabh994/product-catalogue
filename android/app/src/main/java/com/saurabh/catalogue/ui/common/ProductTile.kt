@@ -47,6 +47,8 @@ fun ProductTile(product: Product, onClick: () -> Unit, modifier: Modifier = Modi
             Text(
                 text = product.title,
                 style = MaterialTheme.typography.titleSmall,
+                // Always reserve two lines so tiles in a row are the same height and prices line up.
+                minLines = 2,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

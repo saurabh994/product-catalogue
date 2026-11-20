@@ -6,7 +6,7 @@ const valid = {
   productId: '1',
   name: 'Asha Rao',
   email: 'asha@example.com',
-  phone: '+91 98765 43210',
+  phone: '9876543210',
   message: 'Do you ship to Pune?',
 };
 
@@ -57,10 +57,14 @@ describe('POST /v1/enquiries', () => {
     await request(app).post('/v1/enquiries').send({ ...valid, name: 'Asha\r\nBcc: victim@example.com' }).expect(400);
   });
 
-  it('rejects an invalid phone number', async () => {
-    const { app } = buildTestApp();
-    await request(app).post('/v1/enquiries').send({ ...valid, phone: 'call me maybe' }).expect(400);
-  });
+  it.each([['call me maybe'], ['98765432101'], ['+91 9876543210'], ['98765-43210']])(
+    'rejects phone %j (digits only, max 10)',
+    async (phone) => {
+      const { app } = buildTestApp();
+      const res = await request(app).post('/v1/enquiries').send({ ...valid, phone }).expect(400);
+      expect(res.body.error.details[0]).toEqual({ field: 'phone', message: 'Phone must be up to 10 digits' });
+    },
+  );
 
   it('returns 404 for an unknown product', async () => {
     const { app, email } = buildTestApp();

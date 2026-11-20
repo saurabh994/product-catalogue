@@ -1,7 +1,7 @@
 # Decisions and assumptions
 
-Status: **draft from Phase 1** (planning). Items marked **⚑ Confirm** were AI proposals I reviewed explicitly.
-Sections 6–8 are completed at the end of the build.
+Assumptions I made where the acceptance criteria were open, the trade-offs behind them, what I cut, and how the design grows.
+Items marked **⚑** were AI proposals I reviewed explicitly (see the review notes in §2 and in AI_USAGE.md).
 
 ---
 
@@ -52,6 +52,7 @@ Reviewed 10:38am: ⚑ items 1, 2, 3, 5, 6 accepted as proposed; item 4 (images) 
 
 ### 2.5 Enquiry — "sales inbox receives an email AND customer sees Thank you"
 - Form fields: **name** (required), **email** (required), **phone** (optional), **message** (optional). ⚑ Confirm
+- **Phone: digits only, at most 10** (my decision, made after testing on my phone). Assumes local numbers (e.g. Indian mobiles) with no country code or separators. The app filters the input as you type and shows a number pad; the backend enforces the same rule. For international customers this would become an E.164 field with a country picker.
 - The app sends only `productId` + contact details; the **backend looks up the product** and puts its title/price in the email, so the email can't be spoofed with fake product details.
 - Sales inbox address comes from config (`SALES_INBOX`), never from the client.
 - **"Thank you" is shown only after the backend confirms the email was sent.** If sending fails, the user sees an error with a retry — we don't show a false thank-you. ⚑ Confirm
@@ -199,19 +200,50 @@ Decisions:
 
 ---
 
-## 5. Out of scope for the PoC (initial list — finalised at the end)
-- No database: enquiries are emailed, not stored.
-- No pagination (Fake Store has 20 products).
-- No admin UI for curation (config file instead).
-- No customer confirmation email.
-- No offline cache in the app.
-- English only, no accessibility audit beyond Compose defaults.
+## 5. Requirements dropped or simplified
 
-## 6. Requirements dropped or simplified
-_(completed in Phase 5)_
+| What | Simplification | Why it's acceptable for the PoC |
+|---|---|---|
+| Enquiry storage | **Emailed only, not stored.** If the email provider is down, the user sees an error and retries — nothing is queued. | The criterion is "sales inbox receives an email". A database + outbox is the first thing I'd add (§7). |
+| Curating "top rated" | A **JSON config file** (`backend/config/curation.json`) behind a `CurationSource` interface; no admin UI. | The entrepreneur "chose" the products; a file is the simplest honest version, and the interface lets a CMS replace it. |
+| Customer confirmation | No email to the customer — only the "Thank you" screen. | Not in the criteria. |
+| Search quality | Case-insensitive word matching over title, description and category; no fuzzy matching or relevance ranking (sorted by rating). | Fake Store has 20 products; a search engine would be premature. Lives behind the backend, so it can be swapped. |
+| Pagination | None. | 20 products. The `/v1` API can add cursors without breaking clients. |
+| Cache and rate limit | **In-memory**, per process. | Correct for one instance; needs a shared store (e.g. Redis) when scaled out. |
+| Images | Proxied through the backend by product ID; not resized or cached server-side (clients cache via `Cache-Control` and Coil). | Keeps the app independent of the provider; a CDN is the growth step. |
+| Release build | `catalogue.apiBaseUrl.release` is a placeholder (`https://api.example.invalid/`). | Nothing is deployed yet; release builds are HTTPS-only by config. |
+| App offline support | None — errors with retry instead. | Not required for a PoC. |
+| Android modules | Single `:app` module, layered by package. | Five screens; per-feature/per-layer modules are the growth path. |
+| Accessibility / i18n | Headings, content descriptions, TalkBack live region for send errors, string resources — but no full audit; English only. Client-side validation messages are English strings in the domain layer. | Time-box; strings are already externalised for the UI. |
+| Auth, CI, deployment | None. | Out of scope for a locally-run PoC; see §7. |
 
-## 7. How the design supports growth
-_(completed in Phase 5 — headline: provider, email and look-and-feel are each one interface/implementation swap)_
+Also left as-is: the wizard's `ExampleUnitTest` / `ExampleInstrumentedTest`; minSdk 24 (wizard default).
 
-## 8. What I'd do next with another day
-_(completed in Phase 5)_
+## 6. How the design supports growth
+
+The brief says the **product data source, look and feel and email provider will all change**. Each is one swap:
+
+| Will change | Where it's isolated | What changing it means |
+|---|---|---|
+| **Product data source** (Fake Store → PIM / Shopify / own DB) | Backend `ProductSource` interface; `FakeStoreProductSource` is the only file that knows Fake Store; mapped to our own `Product` model. Caching is a decorator around any source. | Write a new adapter, change one line in `server.ts`. **No change** to routes, the API contract or the app. |
+| **Email provider** (Mailpit → SES / SendGrid / Resend) | `EmailSender` interface; `SmtpEmailSender` already works with any SMTP server, including AWS SES SMTP. | Point `SMTP_HOST` at SES, or add one class for an HTTP API provider. |
+| **Look and feel** (creative agency) | Android design tokens: `BrandColors`, `Spacing`, shapes, `Typography`; screens never use raw colours/sizes; dynamic colour off so the brand is consistent. | Replace token values (and the font) — every screen updates. |
+| **Curation** (file → CMS) | `CurationSource` interface. | New implementation; nothing else changes. |
+| **Product images** (proxy → CDN) | App receives `imageUrl` from our API and never contacts the provider. | Backend returns CDN URLs; the app is unchanged. |
+
+Further structure that keeps it growable:
+- **Clear boundaries:** Android app ↔ our versioned **`/v1` API** ↔ backend ↔ provider. The app has zero knowledge of Fake Store.
+- **Android clean architecture:** `ui → domain ← data`. Repository interfaces live in `domain`; ViewModels call **use cases**; Hilt modules are the only place implementations are chosen. A local cache (Room) or a different API is a `data`-layer change.
+- **One error model** on each side (`AppError` JSON on the backend, sealed `AppError` in the app), so new failure modes are handled consistently.
+- **AWS-ready:** the backend is a stateless container (non-root, healthcheck) → ECS/Fargate or App Runner; SES for email; ElastiCache for shared cache/rate limiting; CloudFront for images. All config is environment variables.
+- **Tests at each boundary** with fakes (backend services/routes, Android repository via MockWebServer, use cases, ViewModels, Compose UI) give confidence to change internals.
+
+## 7. What I'd do next with another day
+1. **Persist enquiries** (Postgres/DynamoDB) with an outbox + retry so no enquiry is lost if email is down; send the customer a confirmation email.
+2. **CI** (GitHub Actions): backend tests + typecheck, Android unit tests + lint, and the Compose UI test on an emulator.
+3. **Shared API contract:** generate an OpenAPI spec from the zod schemas and Kotlin DTOs from it, so app and backend can't drift.
+4. **Deploy to AWS** (Fargate + SES + HTTPS) and set the real release base URL.
+5. **Shared cache and rate limiting** (Redis) for multiple instances; images via CDN.
+6. **Admin/CMS for curation** instead of the JSON file.
+7. **App polish:** offline cache (Room) and pull-to-refresh, screenshot tests, an accessibility audit, localisation (move validation messages to resources).
+8. **Hilt-based UI tests** for full-navigation end-to-end flows against the dockerised backend.

@@ -34,7 +34,7 @@
     <string name="enquiry_intro">Leave your details and our sales team will get back to you.</string>
     <string name="enquiry_name">Name</string>
     <string name="enquiry_email">Email</string>
-    <string name="enquiry_phone">Phone (optional)</string>
+    <string name="enquiry_phone">Phone (optional, 10 digits)</string>
     <string name="enquiry_message">Message (optional)</string>
     <string name="enquiry_submit">Send enquiry</string>
     <string name="enquiry_send_failed">%1$s Your details are still here.</string>

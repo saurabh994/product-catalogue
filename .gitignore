@@ -12,6 +12,7 @@ npm-debug.log*
 
 # ---------- Android (android/) ----------
 .gradle/
+.kotlin/
 build/
 local.properties
 captures/
