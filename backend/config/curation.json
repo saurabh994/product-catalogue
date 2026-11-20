@@ -1,0 +1,7 @@
+{
+  "$comment": "Business-curated 'top rated' products. Replace this file (or the CurationSource implementation) with a CMS later.",
+  "featured": ["3", "5", "11", "18", "1"],
+  "topRatedByCategory": {
+    "electronics": ["11", "12"]
+  }
+}

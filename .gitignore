@@ -1,0 +1,32 @@
+# ---------- Secrets / local config ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Node (backend/) ----------
+node_modules/
+dist/
+coverage/
+*.log
+npm-debug.log*
+
+# ---------- Android (android/) ----------
+.gradle/
+.kotlin/
+build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+# IDE: keep shared run configs out, ignore per-user state
+*.iml
+.idea/
+
+# ---------- OS / editors ----------
+.DS_Store
+Thumbs.db
+.vscode/
